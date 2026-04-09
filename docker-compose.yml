@@ -1,0 +1,50 @@
+services:
+  ollama:
+    image: ollama/ollama:0.18.2
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    networks:
+      - ai-stack
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:v0.8.10
+    container_name: open-webui
+    restart: unless-stopped
+    depends_on:
+      - ollama
+      - searxng
+    ports:
+      - "3000:8080"
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      WEBUI_SECRET_KEY: change-this-webui-secret-key
+      ENABLE_RAG_WEB_SEARCH: "True"
+      RAG_WEB_SEARCH_ENGINE: searxng
+      SEARXNG_QUERY_URL: http://searxng:8080/search?q=<query>&format=json
+    volumes:
+      - open-webui:/app/backend/data
+    networks:
+      - ai-stack
+
+  searxng:
+    image: ghcr.io/searxng/searxng:2026.3.17-2bb8ac17c
+    container_name: searxng
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+    networks:
+      - ai-stack
+
+networks:
+  ai-stack:
+    driver: bridge
+
+volumes:
+  ollama:
+  open-webui:
